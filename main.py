@@ -1,4 +1,4 @@
-import os
+      import os
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -24,23 +24,26 @@ async def info(interaction: discord.Interaction, username: str):
     await interaction.response.defer()
     try:
         search = requests.get(f"https://users.roblox.com/v1/users/search?username={username}").json()
-        if search["data"]:
+        if search.get("data"):
             user = search["data"][0]
-            user_id = user["id"]
-            display_name = user["displayName"]
+            user_id = user.get("id", "Unknown")
+            display_name = user.get("displayName", "Unknown")
 
-            # عدد الأصدقاء
+            # الأصدقاء
             friends = requests.get(f"https://friends.roblox.com/v1/users/{user_id}/friends").json()
-            num_friends = len(friends.get("data", []))
+            num_friends = len(friends.get("data", [])) if friends.get("data") else 0
 
             # Game Passes
             passes = requests.get(f"https://apis.roblox.com/game-passes/v1/users/{user_id}/owned-game-passes").json()
-            num_passes = len(passes.get("data", []))
+            num_passes = len(passes.get("data", [])) if passes.get("data") else 0
 
             # آخر ثلاث ألعاب
             activities = requests.get(f"https://games.roblox.com/v1/users/{user_id}/friends-activity").json()
-            last_games = [a.get("universeName", "Unknown") for a in activities.get("data", [])[:3]]
-            last_games_str = "\n".join(last_games) if last_games else "لا توجد معلومات"
+            last_games_list = []
+            if activities.get("data"):
+                for a in activities["data"][:3]:
+                    last_games_list.append(a.get("universeName", "Unknown"))
+            last_games_str = "\n".join(last_games_list) if last_games_list else "لا توجد معلومات"
 
             embed = discord.Embed(title=f"Roblox Info: {username}", color=0x00FF00)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
@@ -49,6 +52,7 @@ async def info(interaction: discord.Interaction, username: str):
             embed.add_field(name="عدد الأصدقاء", value=num_friends)
             embed.add_field(name="عدد Game Passes", value=num_passes)
             embed.add_field(name="آخر ثلاث ألعاب دخلها", value=last_games_str, inline=False)
+
             await interaction.followup.send(embed=embed)
         else:
             await interaction.followup.send("❌ لم يتم العثور على المستخدم.")
@@ -62,19 +66,20 @@ async def status(interaction: discord.Interaction, username: str):
     await interaction.response.defer()
     try:
         search = requests.get(f"https://users.roblox.com/v1/users/search?username={username}").json()
-        if search["data"]:
+        if search.get("data"):
             user = search["data"][0]
-            user_id = user["id"]
+            user_id = user.get("id")
 
             presence = requests.get(f"https://presence.roblox.com/v1/presence/users?userIds={user_id}").json()
             state = "Offline"
             last_game = "لا توجد لعبة حالية"
-            if presence["userPresences"]:
+
+            if presence.get("userPresences"):
                 presence_info = presence["userPresences"][0]
                 user_state = presence_info.get("userPresenceType", 0)
                 if user_state == 1:
                     state = "Online"
-                last_game = presence_info.get("lastLocation", last_game)
+                last_game = presence_info.get("lastLocation", "لا توجد لعبة حالية")
 
             embed = discord.Embed(title=f"Status: {username}", color=0x00FF00)
             embed.add_field(name="الحالة", value=state)
@@ -102,4 +107,4 @@ bot.tree.add_command(status)
 bot.tree.add_command(robux)
 
 # ----- تشغيل البوت -----
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(os.getenv("DISCORD_TOKEN"))      
